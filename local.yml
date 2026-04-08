@@ -1,7 +1,7 @@
 name: tictactoe
 
 socket:
-  server_key: "${NAKAMA_SERVER_KEY:tictactoe-server-key}"
+  server_key: "${NAKAMA_SERVER_KEY}"
 
 runtime:
   path: "/nakama/data/modules"
