@@ -16,3 +16,10 @@ FROM heroiclabs/nakama:3.22.0
 
 COPY --from=builder /backend/backend.so /nakama/data/modules/
 COPY local.yml /nakama/data/
+COPY entrypoint.sh /nakama/data/
+
+USER root
+RUN chmod +x /nakama/data/entrypoint.sh
+USER nakama
+
+ENTRYPOINT ["/nakama/data/entrypoint.sh"]
