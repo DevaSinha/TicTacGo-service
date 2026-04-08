@@ -1,4 +1,4 @@
-package main
+package rpc
 
 import (
 	"context"
@@ -7,6 +7,9 @@ import (
 	"fmt"
 
 	"github.com/heroiclabs/nakama-common/runtime"
+	"github.com/yourusername/lila-tictactoe-server/internal/leaderboard"
+	"github.com/yourusername/lila-tictactoe-server/internal/storage"
+	"github.com/yourusername/lila-tictactoe-server/pkg/types"
 )
 
 func RpcCreateMatch(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
@@ -42,7 +45,7 @@ func RpcGetPlayerStats(ctx context.Context, logger runtime.Logger, db *sql.DB, n
 		return "", fmt.Errorf("user ID not found in context: %w", runtime.NewError("unauthenticated", 16))
 	}
 
-	stats, err := ReadPlayerStats(ctx, nk, userID)
+	stats, err := storage.ReadPlayerStats(ctx, nk, userID)
 	if err != nil {
 		return "", fmt.Errorf("failed to read player stats: %w", err)
 	}
@@ -56,15 +59,15 @@ func RpcGetPlayerStats(ctx context.Context, logger runtime.Logger, db *sql.DB, n
 }
 
 func RpcGetLeaderboard(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, payload string) (string, error) {
-	records, err := GetTopLeaderboard(ctx, nk, 10)
+	records, err := leaderboard.GetTopLeaderboard(ctx, nk, 10)
 	if err != nil {
 		return "", fmt.Errorf("failed to get leaderboard: %w", err)
 	}
 
-	var results []LeaderboardRecord
+	var results []types.LeaderboardRecord
 	for _, r := range records {
-		stats, _ := ReadPlayerStats(ctx, nk, r.OwnerId)
-		results = append(results, LeaderboardRecord{
+		stats, _ := storage.ReadPlayerStats(ctx, nk, r.OwnerId)
+		results = append(results, types.LeaderboardRecord{
 			UserID:   r.OwnerId,
 			Username: r.Username.Value,
 			Score:    int(r.Score),
@@ -75,7 +78,7 @@ func RpcGetLeaderboard(ctx context.Context, logger runtime.Logger, db *sql.DB, n
 	}
 
 	if results == nil {
-		results = []LeaderboardRecord{}
+		results = []types.LeaderboardRecord{}
 	}
 
 	response, err := json.Marshal(results)

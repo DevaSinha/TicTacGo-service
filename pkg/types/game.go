@@ -1,20 +1,12 @@
-package main
-
-const (
-	OpCodeMove         int64 = 1
-	OpCodeStateUpdate  int64 = 2
-	OpCodeGameOver     int64 = 3
-	OpCodeTimerUpdate  int64 = 4
-	OpCodeOpponentLeft int64 = 5
-)
+package types
 
 type GameState struct {
-	Board          [9]string         `json:"board"`
-	Players        map[string]string `json:"players"`
-	CurrentTurn    string            `json:"current_turn"`
-	Status         string            `json:"status"`
-	Winner         string            `json:"winner"`
-	Timer          int               `json:"timer"`
+	Board       [9]string         `json:"board"`
+	Players     map[string]string `json:"players"`
+	CurrentTurn string            `json:"current_turn"`
+	Status      string            `json:"status"`
+	Winner      string            `json:"winner"`
+	Timer       int               `json:"timer"`
 	Mode        string            `json:"mode"`
 }
 

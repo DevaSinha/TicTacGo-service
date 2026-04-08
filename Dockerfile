@@ -10,7 +10,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build --trimpath --mod=readonly --buildmode=plugin -o ./backend.so .
+RUN go build --trimpath --mod=readonly --buildmode=plugin -o ./backend.so ./cmd/plugin/
 
 FROM heroiclabs/nakama:3.22.0
 

@@ -1,13 +1,51 @@
-package main
+package storage
 
 import (
 	"context"
 	"encoding/json"
 	"testing"
+
+	"github.com/heroiclabs/nakama-common/api"
+	"github.com/heroiclabs/nakama-common/runtime"
+	"github.com/yourusername/lila-tictactoe-server/pkg/types"
 )
 
+// mockNakamaModule is a local test double — only storage methods needed here.
+type mockNakamaModule struct {
+	runtime.NakamaModule
+	storageData map[string]string
+}
+
+func (m *mockNakamaModule) StorageRead(ctx context.Context, reads []*runtime.StorageRead) ([]*api.StorageObject, error) {
+	if m.storageData == nil {
+		return nil, nil
+	}
+	var results []*api.StorageObject
+	for _, r := range reads {
+		if val, ok := m.storageData[r.Key]; ok {
+			results = append(results, &api.StorageObject{
+				Collection: r.Collection,
+				Key:        r.Key,
+				UserId:     r.UserID,
+				Value:      val,
+			})
+		}
+	}
+	return results, nil
+}
+
+func (m *mockNakamaModule) StorageWrite(ctx context.Context, writes []*runtime.StorageWrite) ([]*api.StorageObjectAck, error) {
+	if m.storageData == nil {
+		m.storageData = make(map[string]string)
+	}
+	for _, w := range writes {
+		m.storageData[w.Key] = w.Value
+	}
+	return nil, nil
+}
+
 func TestReadPlayerStats_NoData(t *testing.T) {
-	nk := &MockNakamaModule{}
+	nk := &mockNakamaModule{}
 	ctx := context.Background()
 
 	stats, err := ReadPlayerStats(ctx, nk, "nonexistent")
@@ -21,11 +59,11 @@ func TestReadPlayerStats_NoData(t *testing.T) {
 }
 
 func TestReadPlayerStats_ExistingData(t *testing.T) {
-	expected := PlayerStats{Wins: 10, Losses: 5, WinStreak: 3, BestStreak: 7}
+	expected := types.PlayerStats{Wins: 10, Losses: 5, WinStreak: 3, BestStreak: 7}
 	data, _ := json.Marshal(expected)
 
-	nk := &MockNakamaModule{
-		StorageData: map[string]string{
+	nk := &mockNakamaModule{
+		storageData: map[string]string{
 			"user1": string(data),
 		},
 	}
@@ -46,10 +84,10 @@ func TestReadPlayerStats_ExistingData(t *testing.T) {
 }
 
 func TestWritePlayerStats(t *testing.T) {
-	nk := &MockNakamaModule{}
+	nk := &mockNakamaModule{}
 	ctx := context.Background()
 
-	stats := PlayerStats{Wins: 3, Losses: 1, WinStreak: 2, BestStreak: 5}
+	stats := types.PlayerStats{Wins: 3, Losses: 1, WinStreak: 2, BestStreak: 5}
 
 	err := WritePlayerStats(ctx, nk, "user1", &stats)
 	if err != nil {
@@ -79,13 +117,13 @@ func TestWritePlayerStats(t *testing.T) {
 }
 
 func TestWritePlayerStats_Overwrite(t *testing.T) {
-	nk := &MockNakamaModule{}
+	nk := &mockNakamaModule{}
 	ctx := context.Background()
 
-	initial := PlayerStats{Wins: 1, Losses: 0, WinStreak: 1, BestStreak: 1}
+	initial := types.PlayerStats{Wins: 1, Losses: 0, WinStreak: 1, BestStreak: 1}
 	_ = WritePlayerStats(ctx, nk, "user1", &initial)
 
-	updated := PlayerStats{Wins: 2, Losses: 1, WinStreak: 0, BestStreak: 1}
+	updated := types.PlayerStats{Wins: 2, Losses: 1, WinStreak: 0, BestStreak: 1}
 	err := WritePlayerStats(ctx, nk, "user1", &updated)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

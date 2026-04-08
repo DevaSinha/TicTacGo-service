@@ -1,15 +1,66 @@
-package main
+package rpc
 
 import (
 	"context"
 	"encoding/json"
 	"testing"
 
+	"github.com/heroiclabs/nakama-common/api"
 	"github.com/heroiclabs/nakama-common/runtime"
+	"github.com/yourusername/lila-tictactoe-server/pkg/types"
 )
 
+type mockNakamaModule struct {
+	runtime.NakamaModule
+	StorageData       map[string]string
+	LeaderboardWrites []string
+}
+
+func (m *mockNakamaModule) StorageRead(ctx context.Context, reads []*runtime.StorageRead) ([]*api.StorageObject, error) {
+	if m.StorageData == nil {
+		return nil, nil
+	}
+	var results []*api.StorageObject
+	for _, r := range reads {
+		if val, ok := m.StorageData[r.Key]; ok {
+			results = append(results, &api.StorageObject{
+				Collection: r.Collection,
+				Key:        r.Key,
+				UserId:     r.UserID,
+				Value:      val,
+			})
+		}
+	}
+	return results, nil
+}
+
+func (m *mockNakamaModule) StorageWrite(ctx context.Context, writes []*runtime.StorageWrite) ([]*api.StorageObjectAck, error) {
+	if m.StorageData == nil {
+		m.StorageData = make(map[string]string)
+	}
+	for _, w := range writes {
+		m.StorageData[w.Key] = w.Value
+	}
+	return nil, nil
+}
+
+func (m *mockNakamaModule) LeaderboardRecordsList(ctx context.Context, id string, ownerIDs []string, limit int, cursor string, expiry int64) ([]*api.LeaderboardRecord, []*api.LeaderboardRecord, string, string, error) {
+	return []*api.LeaderboardRecord{}, nil, "", "", nil
+}
+
+func (m *mockNakamaModule) MatchCreate(ctx context.Context, module string, params map[string]interface{}) (string, error) {
+	return "match-id-123", nil
+}
+
+func (m *mockNakamaModule) MatchSignal(ctx context.Context, matchID string, data string) (string, error) {
+	if matchID == "valid-match" {
+		return "success", nil
+	}
+	return "error", nil
+}
+
 func TestRpcCreateMatch(t *testing.T) {
-	nk := &MockNakamaModule{}
+	nk := &mockNakamaModule{}
 	ctx := context.Background()
 
 	tests := []struct {
@@ -54,7 +105,7 @@ func TestRpcCreateMatch(t *testing.T) {
 }
 
 func TestRpcGetPlayerStats(t *testing.T) {
-	nk := &MockNakamaModule{
+	nk := &mockNakamaModule{
 		StorageData: map[string]string{
 			"user1": `{"wins":5,"losses":3,"win_streak":2,"best_streak":4}`,
 		},
@@ -68,7 +119,7 @@ func TestRpcGetPlayerStats(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		var stats PlayerStats
+		var stats types.PlayerStats
 		if err := json.Unmarshal([]byte(result), &stats); err != nil {
 			t.Fatalf("failed to unmarshal stats: %v", err)
 		}
@@ -90,7 +141,7 @@ func TestRpcGetPlayerStats(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		var stats PlayerStats
+		var stats types.PlayerStats
 		if err := json.Unmarshal([]byte(result), &stats); err != nil {
 			t.Fatalf("failed to unmarshal stats: %v", err)
 		}
@@ -111,7 +162,7 @@ func TestRpcGetPlayerStats(t *testing.T) {
 }
 
 func TestRpcGetLeaderboard(t *testing.T) {
-	nk := &MockNakamaModule{}
+	nk := &mockNakamaModule{}
 	ctx := context.Background()
 
 	result, err := RpcGetLeaderboard(ctx, nil, nil, nk, "")
@@ -119,7 +170,7 @@ func TestRpcGetLeaderboard(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	var records []LeaderboardRecord
+	var records []types.LeaderboardRecord
 	if err := json.Unmarshal([]byte(result), &records); err != nil {
 		t.Fatalf("failed to unmarshal leaderboard: %v", err)
 	}
