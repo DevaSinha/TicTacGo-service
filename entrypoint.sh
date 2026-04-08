@@ -1,3 +1,4 @@
+#!/bin/sh
 if [ -n "$DATABASE_URL" ]; then
   DB_ADDR=$(echo $DATABASE_URL | sed -e 's/^postgres:\/\///' -e 's/^postgresql:\/\///')
 else
